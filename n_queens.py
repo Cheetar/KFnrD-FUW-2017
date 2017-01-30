@@ -175,6 +175,4 @@ class NQueensProblem(object):
 
 if __name__ == "__main__":
     problem = NQueensProblem(8)
-    # problem.solve()
-    print len(problem.get_all_solutions())
-    print len(problem.get_all_unique_solutions())
+    problem.solve()
