@@ -15,10 +15,15 @@ class NQueensProblem(object):
             return False
         return True
 
+    def sol_to_bool(self, sol):
+        if sol in ["UNSAT", "UNKNOWN"]:
+            return sol
+        return [x >= 0 for x in sol]
+
     def get_explicit_solution(self):
         cnf = self.get_cnf()
         solution = pycosat.solve(cnf)
-        return solution
+        return self.sol_to_bool(solution)
 
     def solve(self):
         solution = self.get_explicit_solution()
@@ -26,28 +31,61 @@ class NQueensProblem(object):
 
     def get_all_solutions(self):
         cnf = self.get_cnf()
-        return [sol for sol in pycosat.itersolve(cnf)]
+        return [self.sol_to_bool(sol) for sol in pycosat.itersolve(cnf)]
+
+    def to_array(self, sol):
+        return [sol[(i - self.n):i] for i in range(self.n**2, 0, -self.n)]
+
+    def unarray(self, arr):
+        return reduce(lambda x, y: y + x, arr)
+
+    def rotate(self, arr):
+        return [list(a) for a in zip(*arr[::-1])]
 
     def rotate_sol(self, sol, deg):
-        pass
+        arr = self.to_array(sol)
+        # rotate
+        for i in range(deg / 90):
+            arr = self.rotate(arr)
+        sol = self.unarray(arr)
+        return sol
 
-    def flip_sol(self, sol, flip=True):
-        """ The flip can be either horizontal (flip = True) or
-            vertical (flip=False)
+    def flip_sol(self, sol, horizontal=True):
+        """ The flip can be either horizontal (horizontal = True) or
+            vertical (horizontal=False)
         """
-        pass
+        out = []
+        for num in range(1, self.n**2 + 1):
+            x, y = self.get_coord(num)
+            if horizontal:
+                corresponding_field = self.get_num((self.n - x + 1), y)
+            else:
+                corresponding_field = self.get_num(x, (self.n - y + 1))
+            # -1 because we're counting from 1 not 0
+            out.append(sol[corresponding_field - 1])
+        return out
 
     def get_all_unique_solutions(self):
-        unique_solutions = set()
-        cnf = self.get_cnf()
-        for sol in pycosat.itersolve(cnf):
+        unique_solutions = []
+        all_solutions = self.get_all_solutions()
+        for sol in all_solutions:
+            unique = True
             for deg in [90, 180, 270]:
                 if self.rotate_sol(sol, deg) in unique_solutions:
+                    unique = False
                     break
-            for flip in [True, False]:
-                if self.flip_sol(sol, flip) in unique_solutions:
+            for horizontal in [True, False]:
+                if self.flip_sol(sol, horizontal) in unique_solutions:
+                    unique = False
                     break
-            unique_solutions.add(sol)
+            for deg in [90, 180, 270]:
+                for horizontal in [True, False]:
+                    if self.rotate_sol(self.flip_sol(sol, horizontal), deg) in unique_solutions:
+                        unique = False
+                        break
+            if unique:
+                unique_solutions.append(sol)
+        return unique_solutions
 
     def printout_solution(self, solution):
         if solution == "UNSAT" or solution == "UNKNOWN":
@@ -58,7 +96,7 @@ class NQueensProblem(object):
                 if i % self.n == 0:
                     board += "\n"
 
-                if val < 0:
+                if val <= 0:
                     board += "-"
                 else:
                     board += "Q"
@@ -70,7 +108,14 @@ class NQueensProblem(object):
             x - row
             y - column
         """
-        return (x - 1) * self.n + y
+        return (y - 1) * self.n + x
+
+    def get_coord(self, num):
+        # Let's count fields from 0
+        num -= 1
+        x = num % self.n
+        y = num / self.n
+        return (x + 1, y + 1)
 
     def get_cnf(self):
         get_num = self.get_num
@@ -130,4 +175,6 @@ class NQueensProblem(object):
 
 if __name__ == "__main__":
     problem = NQueensProblem(8)
-    problem.solve()
+    # problem.solve()
+    print len(problem.get_all_solutions())
+    print len(problem.get_all_unique_solutions())
