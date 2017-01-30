@@ -10,44 +10,72 @@ class NQueensProblem(object):
         self.knight_condition = knight_condition
 
     def is_solvable(self):
-        if self.solve == "UNSAT":
+        solution = self.get_explicit_solution()
+        if solution in ["UNSAT", "UNKNOWN"]:
             return False
         return True
 
+    def get_explicit_solution(self):
+        cnf = self.get_cnf()
+        solution = pycosat.solve(cnf)
+        return solution
+
     def solve(self):
-        # TODO manage n=2 and n=3
-        if not self.is_solvable():
-            print "UNSAT"
-        else:
-            cnf = self.get_cnf()
-            solution = pycosat.solve(cnf)
-            self.printout_solution(solution)
+        solution = self.get_explicit_solution()
+        self.printout_solution(solution)
 
     def get_all_solutions(self):
+        cnf = self.get_cnf()
+        return [sol for sol in pycosat.itersolve(cnf)]
+
+    def rotate_sol(self, sol, deg):
         pass
 
-    def printout_solution(self, solution):
-        board = ""
-        for i, val in enumerate(solution):
-            if i % self.n == 0:
-                board += "\n"
+    def flip_sol(self, sol, flip=True):
+        """ The flip can be either horizontal (flip = True) or
+            vertical (flip=False)
+        """
+        pass
 
-            if val < 0:
-                board += "-"
-            else:
-                board += "Q"
-        print board[1:]
+    def get_all_unique_solutions(self):
+        unique_solutions = set()
+        cnf = self.get_cnf()
+        for sol in pycosat.itersolve(cnf):
+            for deg in [90, 180, 270]:
+                if self.rotate_sol(sol, deg) in unique_solutions:
+                    break
+            for flip in [True, False]:
+                if self.flip_sol(sol, flip) in unique_solutions:
+                    break
+            unique_solutions.add(sol)
+
+    def printout_solution(self, solution):
+        if solution == "UNSAT" or solution == "UNKNOWN":
+            print solution
+        else:
+            board = ""
+            for i, val in enumerate(solution):
+                if i % self.n == 0:
+                    board += "\n"
+
+                if val < 0:
+                    board += "-"
+                else:
+                    board += "Q"
+            print board[1:]
+
+    def get_num(self, x, y):
+        """ Each field has its own coordinates x and y. Thid method converts
+            these coordinates into numbers used later on in cnf.
+            x - row
+            y - column
+        """
+        return (x - 1) * self.n + y
 
     def get_cnf(self):
-        def get_num(x, y):
-            """ Each field has its own coordinates x and y. Thid method converts
-                these coordinates into numbers used later on in cnf.
-                x - row
-                y - column
-            """
-            return (x - 1) * self.n + y
-
+        get_num = self.get_num
         n = self.n
+
         cnf = []
         # At least one quuen
         # at all rows
@@ -100,5 +128,6 @@ class NQueensProblem(object):
 
         return cnf
 
-problem = NQueensProblem(8)
-problem.solve()
+if __name__ == "__main__":
+    problem = NQueensProblem(8)
+    problem.solve()
